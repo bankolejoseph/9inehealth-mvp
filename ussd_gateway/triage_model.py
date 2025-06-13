@@ -1,18 +1,16 @@
 import requests
 
 def triage(symptom_text: str):
-    """
-    Connects to TRAE AI for emergency triage. Replace mock if endpoint is ready.
-    """
     try:
         response = requests.post(
-            "https://trae-ai-endpoint.ngrok.io/predict",  # Replace with actual TRAE endpoint
+            "https://trae-ai-mock-server.onrender.com/triage",  # Replace with TRAE live later
             json={"text": symptom_text},
             timeout=5
         )
         result = response.json()
         return result["priority"], result["diagnosis"]
-    except Exception:
+    except Exception as e:
+        print("TRAE fallback triggered:", str(e))
         text = symptom_text.lower()
         if "heart" in text:
             return 1, "Suspected cardiac issue"
