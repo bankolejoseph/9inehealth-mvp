@@ -9,10 +9,10 @@ st.caption("Visuals from triage, dispatch, access logs and CO₂ tracker")
 
 # === Load data ===
 try:
-    triage_stats = pd.read_csv("dashboard/triage_stats.csv")
-    dispatch_logs = pd.read_csv("dashboard/dispatch_logs.csv")
-    co2_savings = pd.read_csv("dashboard/co2_savings.csv")
-    blockchain_logs = pd.read_csv("dashboard/blockchain_logs.csv")
+    triage_stats = pd.read_csv("triage_stats.csv")
+    dispatch_logs = pd.read_csv("dispatch_logs.csv")
+    co2_savings = pd.read_csv("co2_savings.csv")
+    blockchain_logs = pd.read_csv("blockchain_logs.csv")
 except Exception as e:
     st.error(f"⚠️ Error loading data: {e}")
     st.stop()
