@@ -27,4 +27,4 @@ jobs:
         with:
           service: ${{ secrets.GCP_SERVICE }}
           region: us-central1
-          image: gcr.io/${{ secrets.GCP_PROJECT_ID }}/ussd-gateway
+          image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
