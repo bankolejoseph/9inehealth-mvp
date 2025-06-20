@@ -1,17 +1,10 @@
-name: Deploy to Cloud Run
-
-on:
-  push:
-    branches:
-      - main
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     permissions:
       contents: 'read'
-      id-token: 'write'  # 🔐 required for Workload Identity Federation
+      id-token: 'write'  # needed for Workload Identity Federation
 
     steps:
       - name: Checkout code
@@ -21,6 +14,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
+          service_account: 280102709880-compute@developer.gserviceaccount.com
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
@@ -28,4 +22,3 @@ jobs:
           service: ${{ secrets.GCP_SERVICE }}
           region: us-central1
           image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
-          service_account: 280102709880-compute@developer.gserviceaccount.com
