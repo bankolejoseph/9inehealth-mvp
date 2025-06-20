@@ -33,6 +33,4 @@ jobs:
           --allow-unauthenticated \
           --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:us-central1:health-db \
           --set-env-vars="DB_HOST=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:us-central1:health-db,DB_NAME=postgres,DB_USER=postgres,DB_PASS=9inehealth_secure"
-git add .github/workflows/deploy.yml
-git commit -m "Add GitHub Actions deployment workflow"
-git push origin main  # or dev
+
