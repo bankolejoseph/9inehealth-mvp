@@ -28,3 +28,4 @@ jobs:
           service: ${{ secrets.GCP_SERVICE }}
           region: us-central1
           image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
+          service_account: 280102709880-compute@developer.gserviceaccount.com
