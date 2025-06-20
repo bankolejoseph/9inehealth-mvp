@@ -1,59 +1,90 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Form
 from fastapi.responses import PlainTextResponse
+import os
+import psycopg2
+import traceback
 from triage_model import triage
 from dispatch import dispatch_ambulance
-from blockchain_access import get_emergency_data, get_full_history
-import psycopg2
-import os
 
 app = FastAPI()
 
-# DB config
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_NAME = os.getenv("DB_NAME", "ninehealth")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASS = os.getenv("DB_PASS", "9inehealth_secure")
+# Database configuration
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
 
-def log_request(session_id, phone, text, priority, diagnosis, eta, location):
+# DB logging function
+def log_to_db(data):
     try:
+        print("📥 Connecting to DB...")
+        print(f"🛠 Host={DB_HOST}, DB={DB_NAME}, User={DB_USER}")
+
         conn = psycopg2.connect(
             host=DB_HOST,
             dbname=DB_NAME,
             user=DB_USER,
             password=DB_PASS
         )
-        cursor = conn.cursor()
-        cursor.execute("""
+
+        cur = conn.cursor()
+        print("📤 Inserting data:", data)
+
+        cur.execute("""
             INSERT INTO ussd_logs (session_id, phone_number, text, priority, diagnosis, eta_minutes, location)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (session_id, phone, text, priority, diagnosis, eta, location))
+        """, (
+            data["session_id"],
+            data["phone_number"],
+            data["text"],
+            data["priority"],
+            data["diagnosis"],
+            data["eta_minutes"],
+            data["location"]
+        ))
+
         conn.commit()
-        cursor.close()
+        cur.close()
         conn.close()
+        print("✅ DB Logging Success!")
+
     except Exception as e:
         print(f"🛑 DB Logging Error: {e}")
+        traceback.print_exc()
 
 @app.post("/ussd", response_class=PlainTextResponse)
-async def ussd_handler(request: Request):
-    form = await request.form()
-    session_id = form.get("sessionId")
-    phone = form.get("phoneNumber")
-    text = form.get("text", "").strip()
+async def ussd_handler(
+    sessionId: str = Form(...),
+    phoneNumber: str = Form(...),
+    text: str = Form(...)
+):
+    print(f"📞 Incoming USSD: session={sessionId}, phone= {phoneNumber}, text={text}")
 
-    if text == "":
-        return "CON Welcome to 9ineHealth Emergency Service.\n1. Heart Attack\n2. Bleeding\n3. Labour\n4. Fever"
+    try:
+        # Step 1: Perform triage
+        triage_result = triage(text)
 
-    if "emergency info" in text.lower():
-        data = get_emergency_data(phone)
-        return f"END Blood Type: {data['blood_type']}, Allergies: {data['allergies']}"
-    elif "full history" in text.lower():
-        records = get_full_history(phone)
-        return f"END Records: {', '.join(records)}"
+        # Step 2: Dispatch ambulance
+        dispatch_info = dispatch_ambulance(triage_result["priority"])
 
-    priority, diagnosis = triage(text)
-    dispatch_info = dispatch_ambulance(priority, "Lagos")
+        # Step 3: Log to DB
+        log_data = {
+            "session_id": sessionId,
+            "phone_number": phoneNumber,
+            "text": text,
+            "priority": triage_result.get("priority"),
+            "diagnosis": triage_result.get("diagnosis"),
+            "eta_minutes": dispatch_info.get("eta"),
+            "location": dispatch_info.get("location")
+        }
+        log_to_db(log_data)
 
-    # 🔥 Log to DB
-    log_request(session_id, phone, text, priority, diagnosis, dispatch_info["eta"], "Lagos")
+        # Step 4: Respond to USSD request
+        response = f"END Triage result: {triage_result['diagnosis']} (Priority {triage_result['priority']}). "
+        response += f"Ambulance en route. ETA: {dispatch_info['eta']}."
+        return response
 
-    return f"END Triage result: {diagnosis} (Priority {priority}). Ambulance en route. ETA: {dispatch_info['eta']}."
+    except Exception as e:
+        print(f"🛑 Error: {e}")
+        traceback.print_exc()
+        return "END Sorry, an error occurred while processing your request."

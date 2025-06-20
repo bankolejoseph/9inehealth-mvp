@@ -1,6 +1,7 @@
-def dispatch_ambulance(priority_level: int, location: str):
-    print(f"Dispatching ambulance to {location} with priority {priority_level}")
+def dispatch_ambulance(priority: int):
+    location = "Lagos"
+    eta = 10 if priority == 1 else 15
     return {
-        "eta": "12 minutes",
-        "co2_saved_kg": 6.3
+        "location": location,
+        "eta": eta
     }
