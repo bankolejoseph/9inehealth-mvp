@@ -1,0 +1,38 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main  # or whichever branch you deploy from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up gcloud
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+        export_default_credentials: true
+
+    - name: Build & Push Docker Image
+      run: |
+        gcloud builds submit --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_SERVICE }}
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy ${{ secrets.GCP_SERVICE }} \
+          --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_SERVICE }} \
+          --platform managed \
+          --region ${{ secrets.GCP_REGION }} \
+          --allow-unauthenticated \
+          --add-cloudsql-instances=${{ secrets.GCP_PROJECT_ID }}:us-central1:health-db \
+          --set-env-vars="DB_HOST=/cloudsql/${{ secrets.GCP_PROJECT_ID }}:us-central1:health-db,DB_NAME=postgres,DB_USER=postgres,DB_PASS=9inehealth_secure"
+git add .github/workflows/deploy.yml
+git commit -m "Add GitHub Actions deployment workflow"
+git push origin main  # or dev
