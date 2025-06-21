@@ -11,7 +11,7 @@ jobs:
 
     permissions:
       contents: 'read'
-      id-token: 'write'  # Required for Workload Identity Federation
+      id-token: 'write'
 
     steps:
       - name: Checkout code
@@ -30,3 +30,4 @@ jobs:
           service: ussd-gateway
           region: us-central1
           image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
+          **project_id: inehealth-mvp-462020**
