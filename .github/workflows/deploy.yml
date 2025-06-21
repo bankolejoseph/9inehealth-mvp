@@ -30,4 +30,4 @@ jobs:
           service: ussd-gateway
           region: us-central1
           image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
-          **project_id: inehealth-mvp-462020**
+          project_id: inehealth-mvp-462020
