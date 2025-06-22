@@ -2,13 +2,18 @@ name: Deploy to Cloud Run
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:  # Add PR trigger for safety checks
+    branches: [ main ]
+
+env:  # Environment variables for easy maintenance
+  PROJECT_ID: inehealth-mvp-462020
+  SERVICE_NAME: ussd-gateway
+  REGION: us-central1
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -20,14 +25,23 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY }}'
-          service_account: 280102709880-compute@developer.gserviceaccount.com
-          token_format: access_token
+          credentials_json: '${{ secrets.GCP_SA_KEY_NEW }}'  # Updated secret
+          # Remove service_account here (set in deploy step instead)
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
-          service: ussd-gateway
-          region: us-central1
-          image: gcr.io/inehealth-mvp-462020/ussd-gateway:latest
-          project_id: inehealth-mvp-462020
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: gcr.io/${{ env.PROJECT_ID }}/ussd-gateway:${{ github.sha }}  # Commit-specific tag
+          project_id: ${{ env.PROJECT_ID }}
+          service_account: github-deploy-v2@${{ env.PROJECT_ID }}.iam.gserviceaccount.com  # Correct SA
+          env_vars: "ENV=production"  # Add required env vars
+
+      - name: Verify Deployment  # New health check
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format="value(status.url)")
+          echo "Service URL: $URL"
+          curl -sSf $URL/health > /dev/null || exit 1
