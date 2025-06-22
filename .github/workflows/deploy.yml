@@ -1,15 +1,16 @@
-name: Deploy to Cloud Run
+name: Secure Cloud Run Deployment
 
 on:
   push:
     branches: [ main ]
-  pull_request:  # Add PR trigger for safety checks
+  pull_request:
     branches: [ main ]
 
-env:  # Environment variables for easy maintenance
+env:
   PROJECT_ID: inehealth-mvp-462020
   SERVICE_NAME: ussd-gateway
   REGION: us-central1
+  IMAGE: gcr.io/${{ env.PROJECT_ID }}/ussd-gateway:${{ github.sha }}
 
 jobs:
   deploy:
@@ -25,23 +26,30 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: '${{ secrets.GCP_SA_KEY_NEW }}'  # Updated secret
-          # Remove service_account here (set in deploy step instead)
+          credentials_json: '${{ secrets.GCP_SA_KEY_NEW }}'
+          # Workload Identity alternative (recommended for production):
+          # workload_identity_provider: projects/${{ env.PROJECT_ID }}/locations/global/workloadIdentityPools/your-pool/providers/your-provider
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.REGION }}
-          image: gcr.io/${{ env.PROJECT_ID }}/ussd-gateway:${{ github.sha }}  # Commit-specific tag
+          image: ${{ env.IMAGE }}
           project_id: ${{ env.PROJECT_ID }}
-          service_account: github-deploy-v2@${{ env.PROJECT_ID }}.iam.gserviceaccount.com  # Correct SA
-          env_vars: "ENV=production"  # Add required env vars
+          service_account: github-deploy-v2@${{ env.PROJECT_ID }}.iam.gserviceaccount.com
+          env_vars: "ENVIRONMENT=production"
+          # Add other environment variables as needed:
+          # env_vars: "KEY1=value1,KEY2=value2"
 
-      - name: Verify Deployment  # New health check
+      - name: Verify Deployment
         run: |
           URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
             --region ${{ env.REGION }} \
             --format="value(status.url)")
           echo "Service URL: $URL"
           curl -sSf $URL/health > /dev/null || exit 1
+          echo "Deployment verified successfully"
